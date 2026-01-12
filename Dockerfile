@@ -7,9 +7,10 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     UV_SYSTEM_PYTHON=1
 
-# Install system dependencies
+# Install system dependencies including postgresql-client for pg_isready
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -18,18 +19,21 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY pyproject.toml ./
+# Copy dependency files to the correct location
+COPY backend/pyproject.toml /app/backend/
 
-# Install dependencies using uv
-RUN uv pip install --no-cache -r pyproject.toml
+# Install dependencies
+RUN cd /app/backend && uv pip install --no-cache -r pyproject.toml
 
-# Copy application code
-COPY . .
+# Copy backend code
+COPY backend/ /app/backend/
+
+# Copy entrypoint script
+COPY entrypoint.sh /app/
 
 # Create non-root user and directories
 RUN useradd -m -u 1000 appuser && \
-    mkdir -p /app/static /app/media && \
+    mkdir -p /app/backend/staticfiles /app/backend/media && \
     chown -R appuser:appuser /app
 
 # Make entrypoint executable

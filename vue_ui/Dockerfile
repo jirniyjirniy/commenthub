@@ -18,11 +18,13 @@ COPY . .
 ARG VITE_API_BASE_URL
 ARG VITE_RECAPTCHA_SITE_KEY
 ARG VITE_API_HOST
+ARG VITE_GRAPHQL_URL
 
 # Create .env file
 RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env && \
     echo "VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}" >> .env && \
-    echo "VITE_API_HOST=${VITE_API_HOST}" >> .env
+    echo "VITE_API_HOST=${VITE_API_HOST}" >> .env && \
+    echo "VITE_GRAPHQL_URL=${VITE_GRAPHQL_URL}" >> .env
 
 # Build the application
 RUN npm run build

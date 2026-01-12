@@ -109,15 +109,27 @@ const removeFile = (index: number) => {
   files.value.splice(index, 1);
 };
 
+// Функция для получения превью
 const fetchPreview = async () => {
-  if (!editor.value || editor.value.isEmpty) return;
+  // 1. Проверяем наличие текста
+  if (!editor.value || editor.value.isEmpty) {
+    error.value = "Comment cannot be empty";
+    return;
+  }
+
+  // 2. УБРАЛИ ПРОВЕРКУ КАПЧИ ЗДЕСЬ
+  // Теперь превью доступно всем и не тратит токен
 
   isPreviewLoading.value = true;
   showPreview.value = true;
   try {
     const rawText = editor.value.getHTML();
-    const data = await commentsApi.preview(rawText, recaptchaToken.value);
+
+    // Передаем пустую строку вместо токена!
+    const data = await commentsApi.preview(rawText, "");
+
     previewHtml.value = data.text;
+    error.value = "";
   } catch (e) {
     error.value = "Failed to load preview";
   } finally {
@@ -131,6 +143,7 @@ const handleSubmit = async () => {
     return;
   }
 
+  // Здесь проверка капчи ОСТАЕТСЯ обязательной
   if (!recaptchaToken.value) {
     error.value = "Please complete the CAPTCHA verification";
     return;
@@ -182,17 +195,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="w-full">
-    <!-- Card with gradient and decorations -->
     <div class="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl dark:shadow-purple-900/50 overflow-hidden ring-1 ring-gray-200/20 dark:ring-purple-500/20">
-      <!-- Gradient accent -->
       <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500"></div>
 
-      <!-- Decorative circles -->
       <div class="absolute -top-20 -right-20 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl"></div>
       <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-pink-500/10 rounded-full blur-3xl"></div>
 
       <div class="relative p-6">
-        <!-- Header -->
         <div class="mb-6">
           <div class="flex items-center gap-3 mb-2">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
@@ -211,9 +220,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- Editor Container -->
         <div class="mb-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border-2 border-transparent dark:border-transparent overflow-hidden focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-500/20 transition-all duration-300 shadow-inner dark:shadow-none">
-          <!-- Toolbar -->
           <div
             v-if="editor"
             class="flex items-center gap-1 p-3 border-b-2 border-gray-200/50 dark:border-gray-700/30 bg-white/50 dark:bg-gray-800/50"
@@ -281,10 +288,8 @@ onBeforeUnmount(() => {
             />
           </div>
 
-          <!-- Editor Content -->
           <editor-content :editor="editor" />
 
-          <!-- Selected Files -->
           <Transition
             enter-active-class="transition-all duration-300"
             enter-from-class="opacity-0 max-h-0"
@@ -329,7 +334,6 @@ onBeforeUnmount(() => {
           </Transition>
         </div>
 
-        <!-- Error Message -->
         <Transition
           enter-active-class="transition-all duration-300 ease-out"
           enter-from-class="opacity-0 -translate-y-2"
@@ -346,7 +350,6 @@ onBeforeUnmount(() => {
           </div>
         </Transition>
 
-        <!-- CAPTCHA -->
         <div class="mb-4">
           <ReCaptcha
             ref="recaptchaRef"
@@ -356,7 +359,6 @@ onBeforeUnmount(() => {
           />
         </div>
 
-        <!-- Preview Area -->
         <Transition
           enter-active-class="transition-all duration-300"
           enter-from-class="opacity-0 max-h-0"
@@ -376,6 +378,7 @@ onBeforeUnmount(() => {
               </svg>
               <h4 class="text-sm font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Preview</h4>
             </div>
+
             <div v-if="isPreviewLoading" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
               <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -383,15 +386,31 @@ onBeforeUnmount(() => {
               </svg>
               Loading preview...
             </div>
-            <div
-              v-else
-              class="preview-content prose prose-sm dark:prose-invert max-w-none text-gray-900 dark:text-gray-100"
-              v-html="previewHtml"
-            ></div>
+
+            <div v-else>
+               <div
+                class="preview-content prose prose-sm dark:prose-invert max-w-none text-gray-900 dark:text-gray-100"
+                v-html="previewHtml"
+              ></div>
+
+              <div v-if="files.length > 0" class="mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Attached files:</p>
+                <div class="flex flex-wrap gap-3">
+                  <div v-for="(file, index) in files" :key="index" class="relative">
+                    <div v-if="getFilePreview(file)" class="w-20 h-20 rounded-xl overflow-hidden border border-purple-200/30 dark:border-purple-700/30 shadow-sm">
+                      <img :src="getFilePreview(file)!" class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else class="w-20 h-20 rounded-xl border border-purple-200/30 dark:border-purple-700/30 bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-xs p-1 text-center font-medium text-gray-600 dark:text-gray-300 break-all">
+                      {{ file.name.split('.').pop()?.toUpperCase() || 'FILE' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </Transition>
 
-        <!-- Action Buttons -->
         <div class="flex justify-end gap-3">
           <button
             type="button"

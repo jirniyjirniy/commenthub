@@ -28,6 +28,26 @@ const goToDetail = () => {
   }
 };
 
+// Обработчик кликов по ссылкам в контенте
+const handleContentClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  if (target.tagName === 'A') {
+    event.stopPropagation(); // Останавливаем всплытие к goToDetail
+    const href = target.getAttribute('href');
+    if (href) {
+      // Проверяем, это внешняя ссылка
+      if (href.startsWith('http://') || href.startsWith('https://')) {
+        event.preventDefault();
+        window.open(href, '_blank', 'noopener,noreferrer');
+      } else {
+        // Для относительных ссылок добавляем протокол
+        event.preventDefault();
+        window.open('https://' + href, '_blank', 'noopener,noreferrer');
+      }
+    }
+  }
+};
+
 const toggleReplyForm = () => {
   showReplyForm.value = !showReplyForm.value;
 };
@@ -162,6 +182,7 @@ const getAvatarGradient = (username: string) => {
         <div
           class="prose dark:prose-invert max-w-none mb-4 text-gray-700 dark:text-gray-200 leading-relaxed comment-content"
           v-html="comment.text"
+          @click="handleContentClick"
         ></div>
 
         <!-- Attachments -->
